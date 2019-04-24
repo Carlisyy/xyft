@@ -1,0 +1,11 @@
+./vendor/bin/phpunit --filter testaddOne ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testdeleteOne ./test/xyftModelTest.php			搜索无数据			 True 
+./vendor/bin/phpunit --filter testgetOneById ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetAllUndeletedByIdUseIn ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetOneByIdForUpdate ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testdeleteUpdateOne ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetAllUndeletedWithOutLimit ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetAllUndeletedWithLimit ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetAllDeletedWithOutLimit ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testgetAllDeletedWithLimit ./test/xyftModelTest.php			 True 
+./vendor/bin/phpunit --filter testeditOne ./test/xyftModelTest.php			搜索无数据			 True 
