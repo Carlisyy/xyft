@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="./js/echarts.min.js"></script>
+</head>
+<body>
+
+<table>
+    <tr><th>数字1正确次数</th><th>数字2正确次数</th><th>数字3正确次数</th><th>数字4正确次数</th><th>数字5正确次数</th><th>数字6正确次数</th><th>数字7正确次数</th><th>数字8正确次数</th><th>数字9正确次数</th><th>数字10正确次数</th></tr>
+    <tr>
+        <?php
+                    if(!empty($arr)){
+                        foreach($arr as $key=>$value){
+        echo "<td>".$value."</td>";
+        }
+        }
+        ?>
+
+
+    </tr>
+</table>
+
+<?php echo "<br /><br /><br /><br />"; ?>
+
+
+
+<table>
+    <tr><th>数字1错误次数</th><th>数字2错误次数</th><th>数字3错误次数</th><th>数字4错误次数</th><th>数字5错误次数</th><th>数字6错误次数</th><th>数字7错误次数</th><th>数字8错误次数</th><th>数字9错误次数</th><th>数字10错误次数</th></tr>
+    <tr>
+        <?php
+                    if(!empty($errorarr)){
+                        foreach($errorarr as $key=>$value){
+        echo "<td>".$value."</td>";
+        }
+        }
+        ?>
+    </tr>
+</table>
+
+<?php echo "<br /><br /><br /><br />"; ?>
+
+<div id="main" style="height:600px;"></div>
+<script type="text/javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+    var option = {
+        title: {
+            text: '每一期盈亏折线统计图（不叠加）'
+        },
+        tooltip: {},
+        legend: {
+            data:['盈亏统计']
+        },
+        xAxis: {
+            data: [<?php echo $totalNumQi; ?>]
+    },
+    yAxis: [
+
+        {
+            type: 'value',
+            name: '赚钱',
+            min: -50,
+            max: 50,
+            interval: 5, //间隔
+            minInterval: 1, //设置成1保证坐标轴分割刻度显示成整数。
+
+        }
+
+    ],
+        series: [{
+        name: '赚钱',
+        type: 'line',
+        data: [
+        <?php
+
+            echo $yingkuiStr;
+
+        ?>
+
+    ],
+    yAxisIndex: 0
+    }]
+    };
+
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+</script>
+
+
+<?php echo "<br /><br /><br /><br />"; ?>
+
+<div id="mainD" style="height:600px;"></div>
+<script type="text/javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('mainD'));
+    var option = {
+        title: {
+            text: '每一期盈亏折线统计图（叠加）'
+        },
+        tooltip: {},
+        legend: {
+            data:['盈亏统计']
+        },
+        xAxis: {
+            data: [<?php echo $totalNumQi; ?>]
+    },
+    yAxis: [
+
+        {
+            type: 'value',
+            name: '赚钱',
+            min: -150,
+            max: 150,
+            interval: 20, //间隔
+            minInterval: 1, //设置成1保证坐标轴分割刻度显示成整数。
+
+        }
+
+    ],
+        series: [{
+        name: '赚钱',
+        type: 'line',
+        data: [
+        <?php
+
+            echo $diejiaStr;
+
+        ?>
+
+    ],
+    yAxisIndex: 0
+    }]
+    };
+
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+</script>
+
+
+
+<?php echo "<br /><br /><br /><br />"; ?>
+
+<?php
+            $str = "";
+            if(!empty($resArray)){
+                foreach($resArray as $key=>$value){
+$str .= "<table><tr><th>期数</th><th>第一个数字</th><th>第二个数字</th><th>第三个数字</th><th>第四个数字</th><th>第五个数字</th><th>第六个数字</th><th>第七个数字</th><th>第八个数字</th><th>第九个数字</th><th>第十个数字</th></tr>";
+    if(!empty($value["mess"])){
+    foreach($value["mess"] as $k=>$v){
+    $str .= "<tr><th>".$v->tremNum."</th><th>".$v->one."</th><th>".$v->two."</th><th>".$v->three."</th><th>".$v->four."</th><th>".$v->five."</th><th>".$v->six."</th><th>".$v->seven."</th><th>".$v->eight."</th><th>".$v->night."</th><th>".$v->ten."</th></tr>";
+    }
+    }
+    if(!empty($value["res"])){
+    $res = $value["res"];
+    $str .= "<tr>
+        <th>预测结果</th>
+        <th style='color:red;'>".$res['one']."</th>
+        <th style='color:red;'>".$res['two']."</th>
+        <th style='color:red;'>".$res['three']."</th>
+        <th style='color:red;'>".$res['four']."</th>
+        <th style='color:red;'>".$res['five']."</th>
+        <th style='color:red;'>".$res['six']."</th>
+        <th style='color:red;'>".$res['seven']."</th>
+        <th style='color:red;'>".$res['eight']."</th>
+        <th style='color:red;'>".$res['night']."</th>
+        <th style='color:red;'>".$res['ten']."</th>
+    </tr>";
+    }
+
+    if(!empty($value["match"])){
+    $match = $value["match"];
+    $str .= "<tr style='color:green;'><th>".$match->tremNum."</th><th>".$match->one."</th><th>".$match->two."</th><th>".$match->three."</th><th>".$match->four."</th><th>".$match->five."</th><th>".$match->six."</th><th>".$match->seven."</th><th>".$match->eight."</th><th>".$match->night."</th><th>".$match->ten."</th></tr></table><br /><br />";
+}
+}
+}
+echo $str;
+?>
+
+
+
+</body>
+</html>

@@ -53,10 +53,15 @@ use NoahBuscher\Macaw\Macaw as route;
 route::get("/getFifthStageByLastFourStage", "Controllers\\xyftController@getFifthStageByLastFourStage");
 
 route::get("/index", "Controllers\\xyftController@index");//首页展示，最新一期的预测
+route::get("/getLastOne", "Controllers\\xyftController@getLastOne");//获取最新的一条数据
 
 route::get("/importDate", "Controllers\\xyftController@importDate");//导入数据，挨期对比
+route::get("/importDate3", "Controllers\\xyftController@importDate3");//导入数据，挨期对比
+
 
 route::post("/getImportDateRes", "Controllers\\xyftController@getImportDateRes");//导入数据的结果
+
+route::post("/getImportDateRes3", "Controllers\\xyftController@getImportDateRes3");//导入数据的结果
 
 
 route::dispatch();

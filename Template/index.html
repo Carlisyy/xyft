@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div><a href="/importDate">点击去导入往期数据进行分析（5码）</a>         <a href="/importDate3">点击去导入往期数据进行分析（3码）</a></div>
+    <br /><br />
+    <?php
+        $str = "<table><tr><th>期数</th><th>第一个数字</th><th>第二个数字</th><th>第三个数字</th><th>第四个数字</th><th>第五个数字</th><th>第六个数字</th><th>第七个数字</th><th>第八个数字</th><th>第九个数字</th><th>第十个数字</th></tr>";
+        if(!empty($xyftres)){
+            foreach($xyftres as $key=>$value){
+                    $str .= "<tr><th>".$value->termNum."</th><th>".$value->one."</th><th>".$value->two."</th><th>".$value->three."</th><th>".$value->four."</th><th>".$value->five."</th><th>".$value->six."</th><th>".$value->seven."</th><th>".$value->eight."</th><th>".$value->night."</th><th>".$value->ten."</th></tr>";
+
+            }
+        }
+    $str .= "<tr><td>下期预测</td>
+            <th style='color:red;'>".$yuce['one']."</th>
+            <th style='color:red;'>".$yuce['two']."</th>
+            <th style='color:red;'>".$yuce['three']."</th>
+            <th style='color:red;'>".$yuce['four']."</th>
+            <th style='color:red;'>".$yuce['five']."</th>
+            <th style='color:red;'>".$yuce['six']."</th>
+            <th style='color:red;'>".$yuce['seven']."</th>
+            <th style='color:red;'>".$yuce['eight']."</th>
+            <th style='color:red;'>".$yuce['night']."</th>
+            <th style='color:red;'>".$yuce['ten']."</th>
+        </tr>";
+        $str .= "</table>";
+        echo $str;
+    ?>
+
+
+
+    <div id="nowMax" style="display: none;"><?php $m =$xyftres[3]; echo $m->id;?></div>
+</body>
+<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+<script>
+    self.setInterval("clock()",60000);
+    function clock()
+    {
+        var maxid = $("#nowMax").text();
+        var url = "/getLastOne";
+        $.ajax({
+            type: 'GET',
+            url: url,
+            data: "",
+            dataType: "json",
+            success: function(res){
+                if(res.status == "success"){
+                    if(res.message > maxid){
+                        window.location.reload();
+                    }
+                }
+            }
+
+        });
+    }
+</script>
+</html>

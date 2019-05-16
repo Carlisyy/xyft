@@ -10,7 +10,7 @@ require_once "vendor/autoload.php";
  * Class getXyftDaemon
  */
 class getXyftDaemon{
-    public $url = "https://www.guzaoapi.com/t?format=json&code=xyft&limit=5&token=968290ACF5964683";//临时的拉取数据的接口
+    public $url = "https://www.guzaowang.com/t?format=json&code=xyft&limit=5&token=CA889F47F98273A9&id=1331";//临时的拉取数据的接口
 
     public $filename = "./daemonPid.txt";//记录所有进程pid的文件
     /**
@@ -226,7 +226,7 @@ class getXyftDaemon{
                             }
                         }
                     }
-                    sleep(4*60);
+                    sleep(2*60);//每隔2分钟执行一次
                 }
             }
         }

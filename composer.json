@@ -20,6 +20,7 @@
 		"codingbean/macaw": "dev-master",
 		"monolog/monolog": "^1.17",
 		"onoi/http-request": "^1.2",
-		"workerman/workerman": "^3.3"
+		"workerman/workerman": "^3.3",
+		"phpoffice/phpspreadsheet":"1.5.1"
 	}
 }

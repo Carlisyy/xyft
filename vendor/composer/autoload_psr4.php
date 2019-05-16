@@ -13,7 +13,9 @@ return array(
     'Symfony\\Polyfill\\Ctype\\' => array($vendorDir . '/symfony/polyfill-ctype'),
     'Symfony\\Component\\Yaml\\' => array($vendorDir . '/symfony/yaml'),
     'Symfony\\Component\\Templating\\' => array($vendorDir . '/symfony/templating'),
+    'Psr\\SimpleCache\\' => array($vendorDir . '/psr/simple-cache/src'),
     'Psr\\Log\\' => array($vendorDir . '/psr/log/Psr/Log'),
+    'PhpOffice\\PhpSpreadsheet\\' => array($vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet'),
     'Onoi\\HttpRequest\\' => array($vendorDir . '/onoi/http-request/src'),
     'Onoi\\Cache\\' => array($vendorDir . '/onoi/cache/src'),
     'NoahBuscher\\Macaw\\' => array($vendorDir . '/codingbean/macaw'),
@@ -24,4 +26,5 @@ return array(
     'Doctrine\\Instantiator\\' => array($vendorDir . '/doctrine/instantiator/src/Doctrine/Instantiator'),
     'Controllers\\' => array($baseDir . '/Controllers'),
     'Config\\' => array($baseDir . '/Config'),
+    'Complex\\' => array($vendorDir . '/markbaker/complex/classes/src'),
 );

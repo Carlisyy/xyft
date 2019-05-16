@@ -134,11 +134,14 @@ class Upload{
                 {
                     echo json_encode(array("state"=>"error","message"=>$name . $this->NoteFileFalse));exit;
                 }
-                /* 文件类型不符 */
-                if (!in_array($type, $this->FileType))
-                {
-                    echo json_encode(array("state"=>"error","message"=>$name . $this->NoteFileType));exit;
-                }
+//                /* 文件类型不符 */
+//                var_dump($type);
+//                var_dump($this->FileType);
+//                if (!in_array($type, $this->FileType))
+//                {
+//
+//                    echo json_encode(array("state"=>"error","message"=>$name . $this->NoteFileType));exit;
+//                }
             }
         }
     }

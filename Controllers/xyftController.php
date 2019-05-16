@@ -3,8 +3,11 @@ namespace Controllers;
 use Libs\Controller;
 use Libs\CTemplate;
 use Libs\Page;
+use Libs\Upload;
 use Models\xyftModel;
 use phpDocumentor\Reflection\Types\Array_;
+use \PhpOffice\PhpSpreadsheet\IOFactory;
+use \PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class xyftController extends Controller
 {
@@ -16,6 +19,75 @@ class xyftController extends Controller
     public $useThisToGetFifth = array(5,4,3,2,1,-1,-2,-3,-4,-5);
     public $forthIndex = array(5, 4, 3, 2, 1, -1, -2, -3, -4, -5);
 
+
+    /**
+     * User: tangwei
+     * Date: 2019/4/25 16:55
+     * Function:首页数据展示
+     */
+    public function index()
+    {
+        $xyftres = xyftModel::getLastFourUndeletedWithOutLimit();
+
+        $yuceres = $this->getFifthStageByLastFourStage($xyftres);
+        $rem = array();
+        if(!empty($yuceres)){
+            foreach($yuceres as $k=>$v){
+                $rem[(int)$k] = !isset($rem[(int)$k]) || $rem[(int)$k] == "" ? $v : $rem[(int)$k]."|".$v;
+            }
+        }
+        if(!empty($rem)){
+            foreach($rem as $key=>$value){
+                if($key == 0){
+                    $rem["one"] = $value;
+                }
+                if($key == 1){
+                    $rem["two"] = $value;
+                }
+                if($key == 2){
+                    $rem["three"] = $value;
+                }
+                if($key == 3){
+                    $rem["four"] = $value;
+                }
+                if($key == 4){
+                    $rem["five"] = $value;
+                }
+                if($key == 5){
+                    $rem["six"] = $value;
+                }
+                if($key == 6){
+                    $rem["seven"] = $value;
+                }
+                if($key == 7){
+                    $rem["eight"] = $value;
+                }
+                if($key == 8){
+                    $rem["night"] = $value;
+                }
+                if($key == 9){
+                    $rem["ten"] = $value;
+                }
+            }
+        }
+        $xyftres = array_reverse($xyftres);
+        $ctemplate=new CTemplate("index.html","dafault",__DIR__."/../Template");//测试模板使用
+
+        $ctemplate->render(array("xyftres"=>$xyftres, "yuce"=>$rem));
+    }
+
+    /**
+     * User: tangwei
+     * Date: 2019/4/25 17:27
+     * Function:获取最新的一条开奖记录
+     */
+    public function getLastOne()
+    {
+        $lastfour = xyftModel::getLastFourUndeletedWithOutLimit();
+        $lastone = $lastfour[0];
+        $this->jsonSuccess($lastone->id);
+    }
+
     /**
      * User: tangwei
      * Date: 2019/4/22 16:55
@@ -23,8 +95,17 @@ class xyftController extends Controller
      */
     public function importDate()
     {
-
+        $ctemplate=new CTemplate("import.html","dafault",__DIR__."/../Template");//测试模板使用
+        $ctemplate->render(array());
     }
+
+    public function importDate3()
+    {
+        $ctemplate=new CTemplate("import3.html","dafault",__DIR__."/../Template");//测试模板使用
+        $ctemplate->render(array());
+    }
+
+
 
     /**
      * User: tangwei
@@ -33,7 +114,2519 @@ class xyftController extends Controller
      */
     public function getImportDateRes()
     {
+        $upload = new Upload(12);//上传文件开始
+        $upload->FileMaxSize = array('image' => 5*1024 * 1024, 'audio' => 2 * 1024 * 1024, 'video' => 20 * 1024 * 1024, "csv"=>5 * 1024 * 1024);
+        $upload->FileType = array('text/csv', "application/octet-stream", "application/vnd.ms-execl"); // 允许上传的文件类型
+        $upload->FileSavePath = './Upload/';
+        $file_save_full_name = $upload->UploadFile();
+        $str = "";
+        if(is_array($file_save_full_name) && !empty($file_save_full_name)){
+            foreach($file_save_full_name as $k=>$v){
+                $str.=$v.";";
+            }
+            $str = substr($str,0,-1);
+        }else{
+            $str = $file_save_full_name;
+        }
+        $spreadsheet = IOFactory::load("./Upload/".$str); // 载入Excel表格
+        # 这里和上面代码的效果都一样,好像就是只读区别吧 不是特别清楚,官网上也给出了很多读写的写法,应该用会少消耗资源
+        # 官网地址 https://phpspreadsheet.readthedocs.io/en/develop/topics/reading-and-writing-to-file/
+        //$reader = IOFactory::createReader('Xlsx');
+        //$reader->setReadDataOnly(TRUE);
+        //$spreadsheet = $reader->load('./file.xlsx'); //载入excel表格
+        $worksheet = $spreadsheet->getActiveSheet();
+        $highestRow = $worksheet->getHighestRow(); // 总行数
+        $highestColumn = $worksheet->getHighestColumn(); // 总列数
+        # 把列的索引字母转为数字 从1开始 这里返回的是最大列的索引
+        # 我尝试了下不用这块代码用以前直接循环字母的方式,拿不到数据
+        # 测试了下超过26个字母也是没有问题的
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+        $data = [];
+        for ($row = 1; $row <= $highestRow; ++$row) { // 从第一行开始
+            $row_data = [];
+            for ($column = 1; $column <= $highestColumnIndex; $column++) {
+                $row_data[] = $worksheet->getCellByColumnAndRow($column, $row)->getValue();
+            }
+            $data[] = $row_data;
+        }
+        $data = array_reverse($data);
+        $totalNum = count($data);
+        $totalNumQi = "";
+//        for($nownum = 5; $nownum <= $totalNum +1; $nownum ++){
+//            $totalNumQi .= "'第".$nownum."期',";
+//        }
+        $one = 0;
+        $two = 1;
+        $three = 2;
+        $four = 3;
+        $resArray = array();
 
+        $arr = array(
+            0,0,0,0,0,0,0,0,0,0
+        );
+
+        $errorarr = array(
+            0,0,0,0,0,0,0,0,0,0
+        );
+
+        $kkk = array();
+
+        $eee = array();
+
+        $num = 0;
+
+        $yingkui = array();
+
+        $kkkuu = 0;
+
+        while(true){
+//            if($num > 10) break;
+//            $num ++;
+            $tmpArray = array();
+            $tmpArray["mess"] = array();
+            if(($totalNum - $one) < 5)break;
+            $firstQi = $data[$one];
+            $secondQi = $data[$two];
+            $thirdQi = $data[$three];
+            $forthQi = $data[$four];
+            $matchQi = $data[(int)($four + 1)];
+            $totalNumQi .= "'".($forthQi[1] + 1)."',";
+            $kkkuu ++;
+            $yingkui[$kkkuu] = 0;
+
+
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $forthQi[0]."第".$forthQi[1]."期";
+            $tmpModel->one = $forthQi[2];
+            $tmpModel->two = $forthQi[3];
+            $tmpModel->three = $forthQi[4];
+            $tmpModel->four = $forthQi[5];
+            $tmpModel->five = $forthQi[6];
+            $tmpModel->six = $forthQi[7];
+            $tmpModel->seven = $forthQi[8];
+            $tmpModel->eight = $forthQi[9];
+            $tmpModel->night = $forthQi[10];
+            $tmpModel->ten = $forthQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第四期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $thirdQi[0]."第".$thirdQi[1]."期";
+            $tmpModel->one = $thirdQi[2];
+            $tmpModel->two = $thirdQi[3];
+            $tmpModel->three = $thirdQi[4];
+            $tmpModel->four = $thirdQi[5];
+            $tmpModel->five = $thirdQi[6];
+            $tmpModel->six = $thirdQi[7];
+            $tmpModel->seven = $thirdQi[8];
+            $tmpModel->eight = $thirdQi[9];
+            $tmpModel->night = $thirdQi[10];
+            $tmpModel->ten = $thirdQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第三期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $secondQi[0]."第".$secondQi[1]."期";
+            $tmpModel->one = $secondQi[2];
+            $tmpModel->two = $secondQi[3];
+            $tmpModel->three = $secondQi[4];
+            $tmpModel->four = $secondQi[5];
+            $tmpModel->five = $secondQi[6];
+            $tmpModel->six = $secondQi[7];
+            $tmpModel->seven = $secondQi[8];
+            $tmpModel->eight = $secondQi[9];
+            $tmpModel->night = $secondQi[10];
+            $tmpModel->ten = $secondQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第二期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $firstQi[0]."第".$firstQi[1]."期";
+            $tmpModel->one = $firstQi[2];
+            $tmpModel->two = $firstQi[3];
+            $tmpModel->three = $firstQi[4];
+            $tmpModel->four = $firstQi[5];
+            $tmpModel->five = $firstQi[6];
+            $tmpModel->six = $firstQi[7];
+            $tmpModel->seven = $firstQi[8];
+            $tmpModel->eight = $firstQi[9];
+            $tmpModel->night = $firstQi[10];
+            $tmpModel->ten = $firstQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第二期放入到数组的第一位
+
+
+//            echo "<br />-------------<br />";
+//            var_dump($tmpArray["mess"]);
+//            $k = array_reverse($tmpArray["mess"]);
+            $yuceRes = $this->getFifthStageByLastFourStage($tmpArray["mess"]);
+//            echo "<br />&&&&&&&&&&&&&&&&&&&&<br />";
+//            var_dump($yuceRes);
+//            echo "<br />***************<br />";
+            $rem = array();
+            if(!empty($yuceRes)){
+                foreach($yuceRes as $k=>$v){
+                    $rem[(int)$k] = !isset($rem[(int)$k]) || $rem[(int)$k] == "" ? $v : $rem[(int)$k]."|".$v;
+                }
+            }
+            if(!empty($rem)){
+                foreach($rem as $key=>$value){
+                    if($key == 0){
+                        $rem["one"] = $value;
+                    }
+                    if($key == 1){
+                        $rem["two"] = $value;
+                    }
+                    if($key == 2){
+                        $rem["three"] = $value;
+                    }
+                    if($key == 3){
+                        $rem["four"] = $value;
+                    }
+                    if($key == 4){
+                        $rem["five"] = $value;
+                    }
+                    if($key == 5){
+                        $rem["six"] = $value;
+                    }
+                    if($key == 6){
+                        $rem["seven"] = $value;
+                    }
+                    if($key == 7){
+                        $rem["eight"] = $value;
+                    }
+                    if($key == 8){
+                        $rem["night"] = $value;
+                    }
+                    if($key == 9){
+                        $rem["ten"] = $value;
+                    }
+                }
+            }
+
+            $tmpArray["res"] = $rem;
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $matchQi[0]."第".$matchQi[1]."期";
+            $tmpModel->one = $matchQi[2];
+            $tmpModel->two = $matchQi[3];
+            $tmpModel->three = $matchQi[4];
+            $tmpModel->four = $matchQi[5];
+            $tmpModel->five = $matchQi[6];
+            $tmpModel->six = $matchQi[7];
+            $tmpModel->seven = $matchQi[8];
+            $tmpModel->eight = $matchQi[9];
+            $tmpModel->night = $matchQi[10];
+            $tmpModel->ten = $matchQi[11];
+            $tmpArray["match"] = $tmpModel;
+
+            array_push($resArray, $tmpArray);
+            $one ++;
+            $two ++;
+            $three ++;
+            $four ++;
+
+
+            //每个数字的正确数量对比
+            if(!empty($tmpArray["res"])){
+//                var_dump($tmpArray["res"]);
+                $match = $tmpArray["match"];
+//                var_dump($match);
+                foreach($tmpArray["res"] as $key=>$value){
+//                    echo "<br />----".$key."-----".$value."-------<br/>";
+                    if($key === "one"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+//                            echo $tmpArray["res"][$key] ."==". $match->one;
+                            if($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+//                    var_dump($arr);
+
+//                    echo "YYYYYYYYYYYYYYYYYYYY<br />";
+
+                    if($key === "two"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+//
+
+
+                                    if($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+
+
+                            if($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "three"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+                                    if($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+                            if($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "four"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+//                                    echo $val ."==". $match->four;
+
+                                    if($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+                            if($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "five"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "six"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+                                    if($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "seven"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+
+                                    if($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+                            if($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "eight"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+
+                                    if($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "night"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "ten"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                    }
+                                }
+                            }
+                        }else{
+
+                            if($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                    $yingkui[$kkkuu] += 5;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] -= 5;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+//        exit;
+//
+////        var_dump($resArray);exit;
+///
+//        foreach($eee as $key=>$value){
+//            echo "<br />".$value."<br />";
+//        }
+
+        $yingkuiStr = "";
+        foreach($yingkui as $k=>$v){
+            $yingkuiStr .= $v.",";
+        }
+
+        $diejiaRes = array();
+        foreach($yingkui as $k=>$v){
+            if($k == 1){
+                $diejiaRes[$k] = $v;
+            }else{
+                $diejiaRes[$k] = $v + $diejiaRes[$k-1];
+            }
+        }
+        $diejiaStr = "";
+        foreach($diejiaRes as $k=>$v){
+            $diejiaStr .= $v.",";
+        }
+
+        $ctemplate=new CTemplate("importRes.html","dafault",__DIR__."/../Template");//测试模板使用
+        $ctemplate->render(array("resArray"=>$resArray, "arr"=>$arr, "errorarr"=>$errorarr, "totalNumQi"=>$totalNumQi, "yingkuiStr"=>$yingkuiStr, "diejiaStr"=>$diejiaStr));
+    }
+
+    public function getImportDateRes3()
+    {
+        $upload = new Upload(12);//上传文件开始
+        $upload->FileMaxSize = array('image' => 5*1024 * 1024, 'audio' => 2 * 1024 * 1024, 'video' => 20 * 1024 * 1024, "csv"=>5 * 1024 * 1024);
+        $upload->FileType = array('text/csv', "application/octet-stream", "application/vnd.ms-execl"); // 允许上传的文件类型
+        $upload->FileSavePath = './Upload/';
+        $file_save_full_name = $upload->UploadFile();
+        $str = "";
+        if(is_array($file_save_full_name) && !empty($file_save_full_name)){
+            foreach($file_save_full_name as $k=>$v){
+                $str.=$v.";";
+            }
+            $str = substr($str,0,-1);
+        }else{
+            $str = $file_save_full_name;
+        }
+        $spreadsheet = IOFactory::load("./Upload/".$str); // 载入Excel表格
+        # 这里和上面代码的效果都一样,好像就是只读区别吧 不是特别清楚,官网上也给出了很多读写的写法,应该用会少消耗资源
+        # 官网地址 https://phpspreadsheet.readthedocs.io/en/develop/topics/reading-and-writing-to-file/
+        //$reader = IOFactory::createReader('Xlsx');
+        //$reader->setReadDataOnly(TRUE);
+        //$spreadsheet = $reader->load('./file.xlsx'); //载入excel表格
+        $worksheet = $spreadsheet->getActiveSheet();
+        $highestRow = $worksheet->getHighestRow(); // 总行数
+        $highestColumn = $worksheet->getHighestColumn(); // 总列数
+        # 把列的索引字母转为数字 从1开始 这里返回的是最大列的索引
+        # 我尝试了下不用这块代码用以前直接循环字母的方式,拿不到数据
+        # 测试了下超过26个字母也是没有问题的
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+        $data = [];
+        for ($row = 1; $row <= $highestRow; ++$row) { // 从第一行开始
+            $row_data = [];
+            for ($column = 1; $column <= $highestColumnIndex; $column++) {
+                $row_data[] = $worksheet->getCellByColumnAndRow($column, $row)->getValue();
+            }
+            $data[] = $row_data;
+        }
+        $data = array_reverse($data);
+        $totalNum = count($data);
+        $totalNumQi = "";
+//        for($nownum = 5; $nownum <= $totalNum +1; $nownum ++){
+//            $totalNumQi .= "'第".$nownum."期',";
+//        }
+        $one = 0;
+        $two = 1;
+        $three = 2;
+        $four = 3;
+        $resArray = array();
+
+        $arr = array(
+            0,0,0,0,0,0,0,0,0,0
+        );
+
+        $errorarr = array(
+            0,0,0,0,0,0,0,0,0,0
+        );
+
+        $kkk = array();
+
+        $eee = array();
+
+        $num = 0;
+
+        $yingkui = array();
+
+        $kkkuu = 0;
+
+        while(true){
+//            if($num > 10) break;
+//            $num ++;
+            $tmpArray = array();
+            $tmpArray["mess"] = array();
+            if(($totalNum - $one) < 5)break;
+            $firstQi = $data[$one];
+            $secondQi = $data[$two];
+            $thirdQi = $data[$three];
+            $forthQi = $data[$four];
+            $matchQi = $data[(int)($four + 1)];
+            $totalNumQi .= "'".($forthQi[1] + 1)."',";
+            $kkkuu ++;
+            $yingkui[$kkkuu] = 0;
+
+
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $forthQi[0]."第".$forthQi[1]."期";
+            $tmpModel->one = $forthQi[2];
+            $tmpModel->two = $forthQi[3];
+            $tmpModel->three = $forthQi[4];
+            $tmpModel->four = $forthQi[5];
+            $tmpModel->five = $forthQi[6];
+            $tmpModel->six = $forthQi[7];
+            $tmpModel->seven = $forthQi[8];
+            $tmpModel->eight = $forthQi[9];
+            $tmpModel->night = $forthQi[10];
+            $tmpModel->ten = $forthQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第四期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $thirdQi[0]."第".$thirdQi[1]."期";
+            $tmpModel->one = $thirdQi[2];
+            $tmpModel->two = $thirdQi[3];
+            $tmpModel->three = $thirdQi[4];
+            $tmpModel->four = $thirdQi[5];
+            $tmpModel->five = $thirdQi[6];
+            $tmpModel->six = $thirdQi[7];
+            $tmpModel->seven = $thirdQi[8];
+            $tmpModel->eight = $thirdQi[9];
+            $tmpModel->night = $thirdQi[10];
+            $tmpModel->ten = $thirdQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第三期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $secondQi[0]."第".$secondQi[1]."期";
+            $tmpModel->one = $secondQi[2];
+            $tmpModel->two = $secondQi[3];
+            $tmpModel->three = $secondQi[4];
+            $tmpModel->four = $secondQi[5];
+            $tmpModel->five = $secondQi[6];
+            $tmpModel->six = $secondQi[7];
+            $tmpModel->seven = $secondQi[8];
+            $tmpModel->eight = $secondQi[9];
+            $tmpModel->night = $secondQi[10];
+            $tmpModel->ten = $secondQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第二期放入到数组的第一位
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $firstQi[0]."第".$firstQi[1]."期";
+            $tmpModel->one = $firstQi[2];
+            $tmpModel->two = $firstQi[3];
+            $tmpModel->three = $firstQi[4];
+            $tmpModel->four = $firstQi[5];
+            $tmpModel->five = $firstQi[6];
+            $tmpModel->six = $firstQi[7];
+            $tmpModel->seven = $firstQi[8];
+            $tmpModel->eight = $firstQi[9];
+            $tmpModel->night = $firstQi[10];
+            $tmpModel->ten = $firstQi[11];
+            array_push($tmpArray["mess"], $tmpModel);//将第二期放入到数组的第一位
+
+
+//            echo "<br />-------------<br />";
+//            var_dump($tmpArray["mess"]);
+//            $k = array_reverse($tmpArray["mess"]);
+            $yuceRes = $this->getFifthStageByLastFourStage($tmpArray["mess"]);
+//            echo "<br />&&&&&&&&&&&&&&&&&&&&<br />";
+//            var_dump($yuceRes);
+//            echo "<br />***************<br />";
+            $rem = array();
+            if(!empty($yuceRes)){
+                foreach($yuceRes as $k=>$v){
+                    $rem[(int)$k] = !isset($rem[(int)$k]) || $rem[(int)$k] == "" ? $v : $rem[(int)$k]."|".$v;
+                }
+            }
+            if(!empty($rem)){
+                foreach($rem as $key=>$value){
+                    if($key == 0){
+                        $rem["one"] = $value;
+                    }
+                    if($key == 1){
+                        $rem["two"] = $value;
+                    }
+                    if($key == 2){
+                        $rem["three"] = $value;
+                    }
+                    if($key == 3){
+                        $rem["four"] = $value;
+                    }
+                    if($key == 4){
+                        $rem["five"] = $value;
+                    }
+                    if($key == 5){
+                        $rem["six"] = $value;
+                    }
+                    if($key == 6){
+                        $rem["seven"] = $value;
+                    }
+                    if($key == 7){
+                        $rem["eight"] = $value;
+                    }
+                    if($key == 8){
+                        $rem["night"] = $value;
+                    }
+                    if($key == 9){
+                        $rem["ten"] = $value;
+                    }
+                }
+            }
+
+            $tmpArray["res"] = $rem;
+
+            $tmpModel = new xyftModel();
+            $tmpModel->tremNum = $matchQi[0]."第".$matchQi[1]."期";
+            $tmpModel->one = $matchQi[2];
+            $tmpModel->two = $matchQi[3];
+            $tmpModel->three = $matchQi[4];
+            $tmpModel->four = $matchQi[5];
+            $tmpModel->five = $matchQi[6];
+            $tmpModel->six = $matchQi[7];
+            $tmpModel->seven = $matchQi[8];
+            $tmpModel->eight = $matchQi[9];
+            $tmpModel->night = $matchQi[10];
+            $tmpModel->ten = $matchQi[11];
+            $tmpArray["match"] = $tmpModel;
+
+            array_push($resArray, $tmpArray);
+            $one ++;
+            $two ++;
+            $three ++;
+            $four ++;
+
+
+            //每个数字的正确数量对比
+            if(!empty($tmpArray["res"])){
+//                var_dump($tmpArray["res"]);
+                $match = $tmpArray["match"];
+//                var_dump($match);
+                foreach($tmpArray["res"] as $key=>$value){
+//                    echo "<br />----".$key."-----".$value."-------<br/>";
+                    if($key === "one"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+//                            echo $tmpArray["res"][$key] ."==". $match->one;
+                            if($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+//                    var_dump($arr);
+
+//                    echo "YYYYYYYYYYYYYYYYYYYY<br />";
+
+                    if($key === "two"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+//
+
+
+                                    if($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val-1] ++;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+
+
+                            if($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "three"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+                                    if($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->two){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->two;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+                            if($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->two){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->two;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "four"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+//                                    echo $val ."==". $match->four;
+
+                                    if($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->three){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->three;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+                            if($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->three){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->three;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "five"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->four){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->four;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->four){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->four;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "six"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+                                    if($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->five){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->five;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->five){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->five;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "seven"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+
+                                    if($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->six){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->six;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+
+
+                            if($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->six){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->six;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "eight"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+
+                                    if($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->seven){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->seven;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->seven){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->seven;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "night"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->eight){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->eight;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+
+                            if($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->eight){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->eight;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+
+                    if($key === "ten"){
+                        if(strpos($value, "|")){
+                            $ttarray= explode("|", $value);
+                            if(!empty($ttarray)){
+                                foreach($ttarray as $ke=>$val){
+
+                                    if($val == $match->ten){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "1数字:".$val ."==第一位数字".$match->ten;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->night){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "2数字:".$val ."==第二位数字". $match->night;
+//                                            echo "<br />*****************<br />";
+//                                        }
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }elseif($val == $match->one){
+//                                        if($val == 6){
+//                                            array_push($kkk, $match->tremNum);
+//                                            echo "3数字:".$val ."==第十位数字". $match->one;
+//                                            echo "<br />*****************<br />";
+//                                        }
+
+                                        $arr[$val - 1] ++;
+                                        $yingkui[$kkkuu] += 7;
+                                    }else{
+//                                        if($val == 6){
+//                                            echo "error";array_push($eee, $match->tremNum);
+//                                            echo "<br />-------------------<br />";
+//                                        }
+                                        $errorarr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 3;
+                                    }
+                                }
+                            }
+                        }else{
+
+                            if($value == $match->ten){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "4数字:".$value ."==第一位数字".$match->ten;
+//                                    echo "<br />*****************<br />";
+//                                }
+//                                echo "*****************<br />";
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->night){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "5数字:".$value ."==第一位数字".$match->night;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }elseif($value == $match->one){
+//                                if($value == 6){
+//                                    array_push($kkk, $match->tremNum);
+//                                    echo "6数字:".$value ."==第十位数字".$match->one;
+//                                    echo "<br />*****************<br />";
+//                                }
+                                $arr[$value-1] ++;
+                                $yingkui[$kkkuu] += 7;
+                            }else{
+                                if($value != ""){
+//                                    if($value == 6){
+//                                        echo "error";array_push($eee, $match->tremNum);
+//                                        echo "<br />-------------------<br />";
+//                                    }
+                                    $errorarr[$value - 1] ++;
+                                    $yingkui[$kkkuu] += 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+//        exit;
+//
+////        var_dump($resArray);exit;
+///
+//        foreach($eee as $key=>$value){
+//            echo "<br />".$value."<br />";
+//        }
+
+        $yingkuiStr = "";
+        foreach($yingkui as $k=>$v){
+            $yingkuiStr .= $v.",";
+        }
+
+        $diejiaRes = array();
+        foreach($yingkui as $k=>$v){
+            if($k == 1){
+                $diejiaRes[$k] = $v;
+            }else{
+                $diejiaRes[$k] = $v + $diejiaRes[$k-1];
+            }
+        }
+        $diejiaStr = "";
+        foreach($diejiaRes as $k=>$v){
+            $diejiaStr .= $v.",";
+        }
+
+        $ctemplate=new CTemplate("importRes3.html","dafault",__DIR__."/../Template");//测试模板使用
+        $ctemplate->render(array("resArray"=>$resArray, "arr"=>$arr, "errorarr"=>$errorarr, "totalNumQi"=>$totalNumQi, "yingkuiStr"=>$yingkuiStr, "diejiaStr"=>$diejiaStr));
     }
 
     /**
@@ -41,22 +2634,28 @@ class xyftController extends Controller
      * Date: 2019/4/2 17:18
      * Function:显示界面
      */
-    public function getFifthStageByLastFourStage()
+    public function getFifthStageByLastFourStage($lastFourDate)//$lastFourDate
     {
-        $lastFourDate = xyftModel::getLastFourUndeletedWithOutLimit();//获取到最近四期的数据
+//        $lastFourDate = xyftModel::getLastFourUndeletedWithOutLimit();//获取到最近四期的数据
+
 //        var_dump($lastFourDate);
+
         if(count($lastFourDate) != 4){
             echo "数据库至少要有4期数据，才能开始推算";exit;
         }
         $this->thirdTmp = $this->getThirdTheoryByFirstAndSecondStage($lastFourDate[3], $lastFourDate[2]);//用第一期和第二期算出第三期的小范围理论
+//        echo "<br />第三期预测如下&&&&&&&&&&&&&&&&&&&<br />";
 //        var_dump($this->thirdTmp);
-
+//        echo "<br />&&&&&&&&&&&&&&&&&&&<br />";
         $this->forthTmp = $this->getForthTeoryByFirstAndThirdStage($lastFourDate[3], $lastFourDate[1]);//用第一期和第三期和算出第四期的小范围理论
-
+//        echo "<br />第三期预测如下&&&&&&&&&&&&&&&&&&&<br />";
 //        var_dump($this->forthTmp);
-
+//        echo "<br />&&&&&&&&&&&&&&&&&&&<br />";
         $this->fifthTmp = $this->getFifthTheoryBySecondAndThirdAndForthTheory($lastFourDate[2], $lastFourDate[1], $lastFourDate[0]);//用第二期和第三期和第四期开奖和第四期的理论 算出第五期的小范围理论
-        var_dump($this->fifthTmp);
+//        echo "<br />第五期预测如下***********************<br />";
+//        var_dump($this->fifthTmp);
+//        echo "<br />&&&&&&&&&&&&&&&&&&&<br />";
+        return $this->fifthTmp;
     }
 
     /**
@@ -668,6 +3267,10 @@ class xyftController extends Controller
         array_push($secondQi, $second->night);
         array_push($secondQi, $second->ten);
 
+//        echo "第二期开奖：";
+//        var_dump($secondQi);
+//        echo "<br />---------------------------------------------<br />";
+
         $thirdQi = array();
         array_push($thirdQi, $third->one);
         array_push($thirdQi, $third->two);
@@ -679,6 +3282,9 @@ class xyftController extends Controller
         array_push($thirdQi, $third->eight);
         array_push($thirdQi, $third->night);
         array_push($thirdQi, $third->ten);
+//        echo "第三期开奖：";
+//        var_dump($thirdQi);
+//        echo "<br />---------------------------------------------<br />";
 
         $fouthQi = array();
         array_push($fouthQi, $fouth->one);
@@ -691,6 +3297,9 @@ class xyftController extends Controller
         array_push($fouthQi, $fouth->eight);
         array_push($fouthQi, $fouth->night);
         array_push($fouthQi, $fouth->ten);
+//        echo "第四期开奖：";
+//        var_dump($fouthQi);
+//        echo "<br />---------------------------------------------<br />";
 
         $newQi = array();//一个新数组 用于存放第五期理论记录
         if(!empty($thirdQi)){
@@ -701,7 +3310,7 @@ class xyftController extends Controller
                             foreach($this->forthTmp as $ke=>$val){
                                 if($value == $v && $v == (int)$val){
                                     $tmpIndex = $this->useThisToGetFifth[$key] + $this->useThisToGetFifth[$k] + $this->useThisToGetFifth[(int)$ke];//将第二期开奖、第三期开奖、第四期的理论下标相加
-//                                    echo "当前数字为：".$value."在第三期的下标得分为".$this->useThisToGetFifth[$key]."在第二期的下标得分为：".$this->useThisToGetFifth[$k]."在第四期的理论下标得分为：".$this->useThisToGetFifth[(int)$ke]."，所以得到的下标得分为：".$tmpIndex."";
+//                                    echo "当前数字为：".$value."在第三期的下标得分为".$this->useThisToGetFifth[$key]."，在第二期的下标得分为：".$this->useThisToGetFifth[$k]."，在第四期的理论下标得分为：".$this->useThisToGetFifth[(int)$ke]."，所以得到的下标得分为：".$tmpIndex."<br />";
                                     if($tmpIndex != 0){//如果下标为0则改数字不参与推算，不等于0才参与推算
                                         $tmpIndex = -$tmpIndex;//互为倒置，比如 如果得到4 那么改为-4
 //                                        echo "当前倒置为:".$tmpIndex."<br />";
@@ -713,12 +3322,13 @@ class xyftController extends Controller
                                             $tmpIndex = $tmpIndex;
                                         }
                                         $tmpIndex = array_search($tmpIndex, $this->useThisToGetFifth);
+                                        if(!array_key_exists($tmpIndex, $newQi)){
+                                            $newQi[$tmpIndex] = $value;
+                                        }else{
+                                            $newQi[$tmpIndex.$str] = $value;
+                                        }
                                     }
-                                    if(!array_key_exists($tmpIndex, $newQi)){
-                                        $newQi[$tmpIndex] = $value;
-                                    }else{
-                                        $newQi[$tmpIndex.$str] = $value;
-                                    }
+
                                 }
                             }
                         }
@@ -737,32 +3347,39 @@ class xyftController extends Controller
             if(!empty($this->forthTmp)){
                 foreach($this->forthTmp as $k=>$v){
                     if($v == $value){
-//                        echo "第四期的数字为：".$value."下标为：".$key.";第四期的理论数字为：".$v."小标为：".$k."<br />";
+//                        echo "第四期的数字为：".$value."下标为：".$key.";第四期的理论数字为：".$v."下标为：".$k."<br />";
                         $tmp = array();
                         if((int)$k > $key){//理论在实际的右边，那么需要判断是在什么范围
                             if((int)$k - $key > 5){
-                                $tmp["pingyi"] = 5 - ((int)$k - $key);
+//                                echo "理论在实际的右边，需移动：".
+                                    $tmp["pingyi"] = 5 - ((int)$k - $key);
                                 $tmp["value"] = $value;
                             }elseif((int)$k - $key == 5){
-                                $tmp["pingyi"] = 0;
+//                                echo "理论在实际的右边，需移动：".
+                                    $tmp["pingyi"] = 0;
                                 $tmp["value"] = $value;
                             }else{
 
-                                $tmp["pingyi"] = 5 - ((int)$k - $key);
+//                                echo "理论在实际的右边，需移动：".
+                                    $tmp["pingyi"] = 5 - ((int)$k - $key);
                                 $tmp["value"] = $value;
                             }
                         }else{//如果理论在实际的左边，那么也需要判断在什么范围
                             if((int)$k - $key < -5){
-                                $tmp["pingyi"] = 5 - ((int)$k - $key);
+//                                echo "理论在实际的左边，需移动：".
+                                    $tmp["pingyi"] = 5 - ((int)$k - $key);
                                 $tmp["value"] = $value;
                             }elseif((int)$k - $key == -5){
-                                $tmp["pingyi"] = 0;
+//                                echo "理论在实际的左边，需移动：".
+                                    $tmp["pingyi"] = 0;
                                 $tmp["value"] = $value;
                             }else{
-                                $tmp["pingyi"] = 5 + ((int)$k - $key);
+//                                echo "理论在实际的左边，需移动：".
+                                    $tmp["pingyi"] = -5 - ((int)$k - $key);
                                 $tmp["value"] = $value;
                             }
                         }
+//                        echo "<br />";
                         array_push($yidong, $tmp);
                     }
                 }
@@ -779,6 +3396,9 @@ class xyftController extends Controller
                         $newIndex = (int)$key - $v["pingyi"];
                         if($newIndex < 0){
                             $newIndex = $newIndex + 10;
+                            if($newIndex < 0){
+                                $newIndex = $newIndex + 10;
+                            }
                             if(!array_key_exists($newIndex, $resQi)){
                                 $resQi[$newIndex] = $value;
                             }else{
@@ -786,6 +3406,9 @@ class xyftController extends Controller
                             }
                         } elseif($newIndex > 9){
                             $newIndex = $newIndex - 10;
+                            if($newIndex > 9){
+                                $newIndex = $newIndex - 10;
+                            }
                             if(!array_key_exists($newIndex, $resQi)){
                                 $resQi[$newIndex] = $value;
                             }else{
@@ -803,6 +3426,7 @@ class xyftController extends Controller
             }
         }
         ksort($resQi);
+//        echo "最终结果：:";
 //        var_dump($resQi);
         return $resQi;
     }
