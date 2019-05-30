@@ -7,41 +7,41 @@
 </head>
 <body>
 
-        <table>
-            <tr><th>数字1正确次数</th><th>数字2正确次数</th><th>数字3正确次数</th><th>数字4正确次数</th><th>数字5正确次数</th><th>数字6正确次数</th><th>数字7正确次数</th><th>数字8正确次数</th><th>数字9正确次数</th><th>数字10正确次数</th></tr>
-            <tr>
-                <?php
-                    if(!empty($arr)){
-                        foreach($arr as $key=>$value){
-                            echo "<td>".$value."</td>";
-                        }
-                    }
-                ?>
+        <!--<table>-->
+            <!--<tr><th>数字1正确次数</th><th>数字2正确次数</th><th>数字3正确次数</th><th>数字4正确次数</th><th>数字5正确次数</th><th>数字6正确次数</th><th>数字7正确次数</th><th>数字8正确次数</th><th>数字9正确次数</th><th>数字10正确次数</th></tr>-->
+            <!--<tr>-->
+                <!--<?php-->
+                    <!--if(!empty($arr)){-->
+                        <!--foreach($arr as $key=>$value){-->
+                            <!--echo "<td>".$value."</td>";-->
+                        <!--}-->
+                    <!--}-->
+                <!--?>-->
 
 
-            </tr>
-        </table>
+            <!--</tr>-->
+        <!--</table>-->
 
-        <?php echo "<br /><br /><br /><br />"; ?>
+        <!--<?php echo "<br /><br /><br /><br />"; ?>-->
 
 
 
-        <table>
-            <tr><th>数字1错误次数</th><th>数字2错误次数</th><th>数字3错误次数</th><th>数字4错误次数</th><th>数字5错误次数</th><th>数字6错误次数</th><th>数字7错误次数</th><th>数字8错误次数</th><th>数字9错误次数</th><th>数字10错误次数</th></tr>
-            <tr>
-                <?php
-                    if(!empty($errorarr)){
-                        foreach($errorarr as $key=>$value){
-                            echo "<td>".$value."</td>";
-                        }
-                    }
-                ?>
-            </tr>
-        </table>
+        <!--<table>-->
+            <!--<tr><th>数字1错误次数</th><th>数字2错误次数</th><th>数字3错误次数</th><th>数字4错误次数</th><th>数字5错误次数</th><th>数字6错误次数</th><th>数字7错误次数</th><th>数字8错误次数</th><th>数字9错误次数</th><th>数字10错误次数</th></tr>-->
+            <!--<tr>-->
+                <!--<?php-->
+                    <!--if(!empty($errorarr)){-->
+                        <!--foreach($errorarr as $key=>$value){-->
+                            <!--echo "<td>".$value."</td>";-->
+                        <!--}-->
+                    <!--}-->
+                <!--?>-->
+            <!--</tr>-->
+        <!--</table>-->
 
-        <?php echo "<br /><br /><br /><br />"; ?>
+        <!--<?php echo "<br /><br /><br /><br />"; ?>-->
 
-        <div id="main" style="height:600px;"></div>
+        <div id="main" style="width:3000px;height:1200px;"></div>
         <script type="text/javascript">
             // 基于准备好的dom，初始化echarts实例
             var myChart = echarts.init(document.getElementById('main'));
@@ -91,7 +91,7 @@
 
         <?php echo "<br /><br /><br /><br />"; ?>
 
-        <div id="mainD" style="height:600px;"></div>
+        <div id="mainD" style="width:3000px;height:1500px;"></div>
         <script type="text/javascript">
             // 基于准备好的dom，初始化echarts实例
             var myChart = echarts.init(document.getElementById('mainD'));
@@ -111,27 +111,58 @@
                 {
                     type: 'value',
                     name: '赚钱',
-                    min: -150,
-                    max: 150,
+                    min: -420,
+                    max: 420,
                     interval: 20, //间隔
                     minInterval: 1, //设置成1保证坐标轴分割刻度显示成整数。
 
                 }
 
             ],
-                series: [{
-                name: '赚钱',
-                type: 'line',
-                data: [
+                series: [
+                    {
+                        name: '赚钱',
+                        type: 'line',
+                        data: [
+                                <?php
+
+                                    echo $diejiaStr;
+
+                                ?>
+                            ],
+                        yAxisIndex: 0
+                    },
+
+
+
+            <?php
+
+                foreach($totalNumQiArray as $k=>$val){
+
+                if($val % 12 == 0){ ?>
+                    {
+                        name:"",
+                            type:"line",
+                        silent:true,
+                        //data:[0],
+                        markLine: {
+                        name:"",
+                            data: [[
+                            {coord:["<?php echo $val;?>",-420]},
+                            {coord:["<?php echo $val;?>",420]}//如何获取grid上侧最大值，目前是写死的
+                        ]]
+                    }
+                    },
                 <?php
 
-                    echo $diejiaStr;
+                }
+            }
 
                 ?>
 
-            ],
-            yAxisIndex: 0
-            }]
+
+
+                ]
             };
 
             // 使用刚指定的配置项和数据显示图表。

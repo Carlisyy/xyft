@@ -8,18 +8,18 @@
 <body>
 
 <!--<table>-->
-    <!--<tr><th>数字1正确次数</th><th>数字2正确次数</th><th>数字3正确次数</th><th>数字4正确次数</th><th>数字5正确次数</th><th>数字6正确次数</th><th>数字7正确次数</th><th>数字8正确次数</th><th>数字9正确次数</th><th>数字10正确次数</th></tr>-->
-    <!--<tr>-->
-        <!--<?php-->
-                    <!--if(!empty($arr)){-->
-                        <!--foreach($arr as $key=>$value){-->
-        <!--echo "<td>".$value."</td>";-->
-        <!--}-->
-        <!--}-->
-        <!--?>-->
+<!--<tr><th>数字1正确次数</th><th>数字2正确次数</th><th>数字3正确次数</th><th>数字4正确次数</th><th>数字5正确次数</th><th>数字6正确次数</th><th>数字7正确次数</th><th>数字8正确次数</th><th>数字9正确次数</th><th>数字10正确次数</th></tr>-->
+<!--<tr>-->
+<!--<?php-->
+<!--if(!empty($arr)){-->
+<!--foreach($arr as $key=>$value){-->
+<!--echo "<td>".$value."</td>";-->
+<!--}-->
+<!--}-->
+<!--?>-->
 
 
-    <!--</tr>-->
+<!--</tr>-->
 <!--</table>-->
 
 <!--<?php echo "<br /><br /><br /><br />"; ?>-->
@@ -27,16 +27,16 @@
 
 
 <!--<table>-->
-    <!--<tr><th>数字1错误次数</th><th>数字2错误次数</th><th>数字3错误次数</th><th>数字4错误次数</th><th>数字5错误次数</th><th>数字6错误次数</th><th>数字7错误次数</th><th>数字8错误次数</th><th>数字9错误次数</th><th>数字10错误次数</th></tr>-->
-    <!--<tr>-->
-        <!--<?php-->
-                    <!--if(!empty($errorarr)){-->
-                        <!--foreach($errorarr as $key=>$value){-->
-        <!--echo "<td>".$value."</td>";-->
-        <!--}-->
-        <!--}-->
-        <!--?>-->
-    <!--</tr>-->
+<!--<tr><th>数字1错误次数</th><th>数字2错误次数</th><th>数字3错误次数</th><th>数字4错误次数</th><th>数字5错误次数</th><th>数字6错误次数</th><th>数字7错误次数</th><th>数字8错误次数</th><th>数字9错误次数</th><th>数字10错误次数</th></tr>-->
+<!--<tr>-->
+<!--<?php-->
+<!--if(!empty($errorarr)){-->
+<!--foreach($errorarr as $key=>$value){-->
+<!--echo "<td>".$value."</td>";-->
+<!--}-->
+<!--}-->
+<!--?>-->
+<!--</tr>-->
 <!--</table>-->
 
 <!--<?php echo "<br /><br /><br /><br />"; ?>-->
@@ -133,31 +133,30 @@
     yAxisIndex: 0
     },
 
-
     <?php
 
         foreach($totalNumQiArray as $k=>$val){
 
-        if($val % 12 == 0){ ?>
-            {
-                name:"",
+            if($val % 12 == 0){ ?>
+                {
+                    name:"",
+                        silent:true,
                     type:"line",
-                silent:true,
-                //data:[0],
-                markLine: {
-                name:"",
-                    data: [[
-                    {coord:["<?php echo $val;?>",-420]},
-                    {coord:["<?php echo $val;?>",420]}//如何获取grid上侧最大值，目前是写死的
-                ]]
+                    //data:[0],
+                    markLine: {
+                        name:"",
+                            data: [[
+                            {coord:["<?php echo $val;?>",-420]},
+                            {coord:["<?php echo $val;?>",420]}//如何获取grid上侧最大值，目前是写死的
+                        ]]
+                    }
+                },
+    <?php
+
             }
-            },
-        <?php
-
         }
-    }
 
-        ?>
+    ?>
 
 
 
