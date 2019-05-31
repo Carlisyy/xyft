@@ -476,6 +476,7 @@ class xyftController extends Controller
 
                                         $arr[$val-1] ++;
                                         $yingkui[$kkkuu] += 5;
+
                                     }elseif($val == $match->one){
 //                                        if($val == 6){
 //                                            array_push($kkk, $match->tremNum);
@@ -483,6 +484,7 @@ class xyftController extends Controller
 //                                            echo "<br />*****************<br />";
 //                                        }
                                         $arr[$val-1] ++;
+                                        $yingkui[$kkkuu] += 5;
                                     }elseif($val == $match->ten){
 //                                        if($val == 6){
 //                                            array_push($kkk, $match->tremNum);
